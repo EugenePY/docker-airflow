@@ -1,0 +1,42 @@
+version: "3"
+
+volumes: 
+    mongodata:
+        driver: local
+
+services: 
+    mongo: # arctic 
+        image: mongo
+        environment:
+            - MONGO_INITDB_ROOT_USERNAME=akira_data
+            - MONGO_INITDB_ROOT_PASSWORD=akira_data
+        ports:
+            - "27017"
+        volumes:
+            - mongodata:/data/db
+
+    zookeeper:
+        image: wurstmeister/zookeeper
+        ports:
+            - "2181"
+    kafka:
+        image: kafka-docker_kafka
+        depends_on:
+            - zookeeper
+        ports:
+            - "9092"
+        environment:
+            HOSTNAME_COMMAND: "route -n | awk '/UG[ \t]/{print $$2}'"
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+
+    streaming:
+        image: eugenepy/akira-data:latest
+        depends_on: 
+            - mongo
+            - kafka
+        environment:
+            - MONGODB_URI=mongodb://akira_data:akira_data@mongo:27017
+            - KAFKA_BOOSTRAPHOST=kafka:9092
+        command: "python script/run_server.py 1 2 --max_retry=-1" # streaming task
