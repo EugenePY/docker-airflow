@@ -1,5 +1,7 @@
+test_airflow:
+	docker-compose -f docker-compose.test.yml up -d
 
-test_staging:
+up_staging:
 	docker-compose -f docker-compose.akira.yml -f docker-compose.test.yml up -d
 
 down_staging:

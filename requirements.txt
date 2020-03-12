@@ -3,3 +3,4 @@ arctic
 elasticsearch
 dvc
 loguru
+pandas

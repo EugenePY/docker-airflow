@@ -36,7 +36,7 @@ def train_model(model_image, model_id, pool_id, start, default_args):
             task_id="train-model",
             image=model_image,
             api_version="auto",
-            command="make -f Makefile.model train_bmk"
+            command="make -f Makefile.model train_bmk",
             volumes=[f"{localhost_dir}:{build_dir}"],
             network_mode="akira-project_default",
             docker_url="tcp://socat:2375")
@@ -69,44 +69,44 @@ def make_prediction(model_id, pool_id, default_args,
             image="eugenepy/basket:latest",
             api_version="auto",
             command="python3 -m baksets predict -m /build/bmk.pkl " +
-            "-i /build/akira_data.test.csv -o /build/akira_data.predict.csv"
+            "-i /build/akira_data.test.csv -o /build/akira_data.predict.csv",
             volumes=[f"{localhost_dir}:{build_dir}"],
             network_mode="akira-project_default",
             docker_url="tcp://socat:2375")
         data_op >> predict_op
         return dag
 
+def model_routine(nday_retrain, default_args):
+    with DAG("update-data-task",
+            default_args=default_args,
+            schedule_interval="@daily", catchup=True) as dag:
+        # We can generate the DAG from akira-test
 
-with DAG("update-data-task",
-         default_args=default_args,
-         schedule_interval="@daily", catchup=True) as dag:
-    # We can generate the DAG from akira-test
+        branching_op = BranchPythonOperator(
+            task_id="check-if-retrain", provide_context=True,
+            op_args={"nday_retrain": nday_retrain},
+            python_callable=retrain_branching)
 
-    branching_op = BranchPythonOperator(
-        task_id="check-if-retrain", provide_context=True,
-        op_args={"nday_retrain": nday_retrain},
-        python_callable=retrain_branching)
+        subdag = train_model(model_image=model_image,
+                            model_id=model_id, pool_id=pool_id,
+                            start=start, default_args=default_args)
 
-    subdag = train_model(model_image=model_image,
-                         model_id=model_id, pool_id=pool_id,
-                         start=start, default_args=default_args)
+        train_op = SubDagOperator(task_id="train-model", subdag=subdag)
 
-    train_op = SubDagOperator(task_id="train-model", subdag=subdag)
+        subdag = make_prediction(model_image=model_image,
+                                model_id=model_id, pool_id=pool_id,
+                                start=start, default_args=default_args)
+        predict_op = SubDagOperator(task_id="making-prediction", subdag=subdag)
 
-    subdag = make_prediction(model_image=model_image,
-                             model_id=model_id, pool_id=pool_id,
-                             start=start, default_args=default_args)
-    predict_op = SubDagOperator(task_id="making-prediction", subdag=subdag)
-
-    branching_op >> [train_op, predict_op]
+        branching_op >> [train_op, predict_op]
+        return dag
 
 model_spec = [{
     "model_id": "bmk",
-    "jenkins_connection_id":
     "image": "eugenepy/basket",
     "tag": "latest",
     "repo": "https://github.com/EugenePY/basket.git",
-    "repo_path": "./basket"
+    "repo_path": "./basket",
     # this will be generate to your repo
     "model_home": "./basket/.airflow.space:/basket_home",
     "rebuild": "",

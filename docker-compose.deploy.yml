@@ -10,8 +10,8 @@ services:
             options:
                 max-size: 10m
                 max-file: "3"
-        #volumes: 
-        #    - airflow_metadata:/var/lib/postgresql/data
+        volumes: 
+            - airflow_metadata:/var/lib/postgresql/data
     airflow:
         build: .
         image: eugenepy/docker-airflow:latest
@@ -51,6 +51,6 @@ services:
             - /var/run/docker.sock:/var/run/docker.sock
         expose:
             - "2375"
-#volumes: 
-#    airflow_metadata:
 
+volumes:
+    airflow_metadata:
