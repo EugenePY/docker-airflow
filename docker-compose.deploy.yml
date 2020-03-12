@@ -32,8 +32,8 @@ services:
                 max-size: 10m
                 max-file: "3"
         volumes:
-            - ./dags:/usr/local/airflow/dags
-            - ./requirements.txt:/requirements.txt
+            - ./docker-airflow/dags:/usr/local/airflow/dags
+            - ./docker-airflow/requirements.txt:/requirements.txt
             # - ./plugins:/usr/local/airflow/plugins
         ports:
             - "8080:8080"
